@@ -4,8 +4,7 @@ clear all
 
 %---------------parameters--------------------
 global Im Jm
-global grid gcell gcell_ghost
-global xp yp xp_ghost yp_ghost
+global xp yp 
 global xc yc xc_ghost yc_ghost 
 global xc1_ghost yc1_ghost xc2_ghost yc2_ghost
 global u u_ghost u1 u1_ghost
@@ -14,9 +13,8 @@ Im = 201;
 Jm = 201;
 
 %---------------grids-------------------------
-grid        = zeros(Im,Jm);
-gcell       = zeros(Im-1,Jm-1);
-gcell_ghost = zeros(Im+1,Jm+1);
+xp = zeros(Im,Jm);
+yp = zeros(Im,Jm);
 
 xc = zeros(Im-1,Jm-1);
 yc = zeros(Im-1,Jm-1);
