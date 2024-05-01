@@ -61,7 +61,7 @@ if Imx == Imy && Jmx == Jmy && Imx == Imu && Jmx == Jmu
     us1 = (x(i2,j1)-x2)/(x(i2,j1)-x(i1,j1)) * u(i1,j1) + (x2-x(i1,j1))/(x(i2,j1)-x(i1,j1)) * u(i2,j1);
     us2 = (x(i2,j2)-x2)/(x(i2,j2)-x(i1,j2)) * u(i1,j2) + (x2-x(i1,j2))/(x(i2,j2)-x(i1,j2)) * u(i2,j2);
     
-    us = (y(i1,j2)-y2)/(y(i1,j2)-y(i1,j1)) * us1 + (y2-y(i1,j1))/(y(i1,j2)-y(i1,j1)) * us2;
+    us = 
 
 
 end
