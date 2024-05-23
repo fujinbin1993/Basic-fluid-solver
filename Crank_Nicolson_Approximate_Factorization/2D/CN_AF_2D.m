@@ -93,12 +93,12 @@ end
 % ghost cells
 for i = 2: Im
     T_ghost(i,1)    = 100;
-    T_ghost(i,Jm+1) = 100;
+    T_ghost(i,Jm+1) = 300;
 end
 
 for j = 2: Jm
-    T_ghost(1,j)    = 300;
-    T_ghost(Im+1,j) = 300;
+    T_ghost(1,j)    = 000;
+    T_ghost(Im+1,j) = 000;
 end
 
 % corner cells
@@ -127,11 +127,11 @@ fclose(fid);
 
 %--------------Heat conduction---------------------------
 alpha = 0.645;
-dt = 0.02*2*(dx*dy)/(dx+dy);
+dt = 0.1*2*(dx*dy)/(dx+dy);
 rx = alpha*dt/dx^2;
 ry = alpha*dt/dy^2;
 
-it = 10000;
+it = 5000;
 
 LHS_x = zeros(Im-1,Im-1);
 RHS_x = zeros(Im-1,1);
@@ -139,6 +139,7 @@ dT_star = zeros(Im-1,Jm-1);
 LHS_y = zeros(Jm-1,Jm-1);
 RHS_y = zeros(Jm-1,1);
 dT    = zeros(Im-1,Jm-1);
+RHS   = zeros(Im-1,Jm-1);
 
 for i = 1: it
     i
@@ -153,9 +154,10 @@ for i = 1: it
             else
                 LHS_x(1,2) = -rx/2.0;
                 LHS_x(Im-1,Im-2) = -rx/2.0;
-                RHS_x(1,1)    = rx*T_ghost(3,2)+rx*T_ghost(1,2)-(2*rx+2*ry)*T_ghost(2,2)+ry*T_ghost(2,3)+ry*T_ghost(2,1);
-                RHS_x(Im-1,1) = rx*T_ghost(Im+1,2)+rx*T_ghost(Im-1,2)-(2*rx+2*ry)*T_ghost(Im,2)+ry*T_ghost(Im,3)+ry*T_ghost(Im,1); 
+                RHS_x(1,1) = rx*T_ghost(3,j+1)+rx*T_ghost(1,j+1)-(2*rx+2*ry)*T_ghost(2,j+1)+ry*T_ghost(2,j+2)+ry*T_ghost(2,j);
+                RHS_x(Im-1,1) = rx*T_ghost(Im+1,j+1)+rx*T_ghost(Im-1,j+1)-(2*rx+2*ry)*T_ghost(Im,j+1)+ry*T_ghost(Im,j+2)+ry*T_ghost(Im,j); 
             end
+            RHS(m,j) = RHS_x(m,1);
         end
         
         dT_star(:,j) = Thomas_function(LHS_x, RHS_x);

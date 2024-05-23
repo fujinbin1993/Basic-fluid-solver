@@ -125,7 +125,7 @@ u_ghost(Im+1,Jm+1) = u_ghost(2,2);
 a = 1;
 b = 1;
 dt = 0.5*max(dx,dy);
-maxit = 400;
+maxit = 2;
 
 for it  = 1: maxit
     for j = 1: Jm+1
