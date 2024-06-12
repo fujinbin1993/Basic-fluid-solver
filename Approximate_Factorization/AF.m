@@ -10,8 +10,8 @@ global T_ghost T_ghost_old diff_T
 global LHS_x RHS_x LHS_y RHS_y
 global dT_star dT
 
-Im = 101;
-Jm = 101;
+Im = 201;
+Jm = 201;
 
 %---------------grids-------------------------
 xp = zeros(Im,Jm);
@@ -172,14 +172,14 @@ for i = 1: it
     for j = 1: Jm-1
 
         for m = 1: Im-1
-            LHS_x(m,m) = 1+2*rx(i);
+            LHS_x(m,m) = 1+rx(i);
             if m<Im-1 && m>1
-                LHS_x(m,m+1) = -rx(i)/1.0;
-                LHS_x(m,m-1) = -rx(i)/1.0;
+                LHS_x(m,m+1) = -rx(i)/2.0;
+                LHS_x(m,m-1) = -rx(i)/2.0;
                 RHS_x(m,1)   = rx(i)*T_ghost(m+2,j+1)+rx(i)*T_ghost(m,j+1)-(2*rx(i)+2*ry(i))*T_ghost(m+1,j+1)+ry(i)*T_ghost(m+1,j+2)+ry(i)*T_ghost(m+1,j);
             else
-                LHS_x(1,2) = -rx(i)/1.0;
-                LHS_x(Im-1,Im-2) = -rx(i)/1.0;                
+                LHS_x(1,2) = -rx(i)/2.0;
+                LHS_x(Im-1,Im-2) = -rx(i)/2.0;                
                 RHS_x(1,1) = rx(i)*T_ghost(3,j+1)+rx(i)*T_ghost(1,j+1)-(2*rx(i)+2*ry(i))*T_ghost(2,j+1)+ry(i)*T_ghost(2,j+2)+ry(i)*T_ghost(2,j);
                 RHS_x(Im-1,1) = rx(i)*T_ghost(Im+1,j+1)+rx(i)*T_ghost(Im-1,j+1)-(2*rx(i)+2*ry(i))*T_ghost(Im,j+1)+ry(i)*T_ghost(Im,j+2)+ry(i)*T_ghost(Im,j); 
             end
@@ -191,13 +191,13 @@ for i = 1: it
     for m = 1: Im-1
         
         for n = 1: Jm-1
-            LHS_y(n,n) = 1+2*ry(i);
+            LHS_y(n,n) = 1+ry(i);
             if n>1 && n<Jm-1
-                LHS_y(n,n-1) = -ry(i)/1.0;
-                LHS_y(n,n+1) = -ry(i)/1.0;
+                LHS_y(n,n-1) = -ry(i)/2.0;
+                LHS_y(n,n+1) = -ry(i)/2.0;
             else
-                LHS_y(1,2) = -ry(i)/1.0;
-                LHS_y(Jm-1,Jm-2) = -ry(i)/1.0;
+                LHS_y(1,2) = -ry(i)/2.0;
+                LHS_y(Jm-1,Jm-2) = -ry(i)/2.0;
             end
             RHS_y(n,1) = dT_star(m,n);
         end
@@ -222,7 +222,7 @@ for i = 1: it
     diffMax(i) = findMax2D(diff_T, Im, Jm);
 
     itarray(i) = i;
-    if( diffMax(i) < 1e-4 )
+    if( diffMax(i) < 1e-6 )
         break;
     end
     

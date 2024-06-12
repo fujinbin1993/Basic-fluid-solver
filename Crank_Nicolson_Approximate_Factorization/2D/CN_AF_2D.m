@@ -6,12 +6,12 @@ clear all
 global Im Jm
 global xp yp
 global xc yc xc_ghost yc_ghost
-global T_ghost
+global T_ghost T_ghost_old diff_T
 global LHS_x RHS_x LHS_y RHS_y
 global dT_star dT
 
-Im = 96;
-Jm = 96;
+Im = 201;
+Jm = 201;
 
 %---------------grids-------------------------
 xp = zeros(Im,Jm);
@@ -23,11 +23,14 @@ yc = zeros(Im-1,Jm-1);
 xc_ghost = zeros(Im+1,Jm+1);
 yc_ghost = zeros(Im+1,Jm+1);
 
-dx = 3.50/(Im-1);
-dy = 3.50/(Jm-1);
+lx = 3.50;
+ly = 3.50;
 
-x1 = 0 : dx : 3.5;
-y1 = 0 : dy : 3.5;
+dx = lx/(Im-1);
+dy = ly/(Jm-1);
+
+x1 = 0 : dx : lx;
+y1 = 0 : dy : ly;
 
 % Grid points
 for j = 1: Jm
@@ -83,6 +86,8 @@ yc_ghost(Im+1,Jm+1) = yc_ghost(Im, Jm+1);
 
 %-------------Initialization-----------------------
 T_ghost = zeros(Im+1,Jm+1);
+T_ghost_old = zeros(Im+1,Jm+1);
+diff_T = zeros(Im+1,Jm+1);
 
 for j = 2: Jm
     for i = 2: Im
@@ -92,13 +97,13 @@ end
 
 % ghost cells
 for i = 2: Im
-    T_ghost(i,1)    = 100;
-    T_ghost(i,Jm+1) = 300;
+    T_ghost(i,1)    = 900;
+    T_ghost(i,Jm+1) = 600;
 end
 
 for j = 2: Jm
-    T_ghost(1,j)    = 000;
-    T_ghost(Im+1,j) = 000;
+    T_ghost(1,j)    = 400;
+    T_ghost(Im+1,j) = 800;
 end
 
 % corner cells
@@ -119,6 +124,7 @@ fprintf(fid, 'ZONE I=%d, J=%d, F=POINT\n', Im+1, Jm+1);
 for j = 1:Jm+1
     for i = 1:Im+1
         fprintf(fid, '%g %g %g\n', xc_ghost(i,j), yc_ghost(i,j), T_ghost(i,j));
+        T_ghost_old(i,j) = T_ghost(i,j);
     end
 end
 
@@ -126,12 +132,12 @@ end
 fclose(fid);
 
 %--------------Heat conduction---------------------------
-alpha = 0.645;
-dt = 0.1*2*(dx*dy)/(dx+dy);
+alpha = 1.0;
+dt = 0.5*2*(dx*dy)/(dx+dy);
 rx = alpha*dt/dx^2;
 ry = alpha*dt/dy^2;
 
-it = 5000;
+it = 1000;
 
 LHS_x = zeros(Im-1,Im-1);
 RHS_x = zeros(Im-1,1);
@@ -164,7 +170,7 @@ for i = 1: it
         
     end
     
-    for i = 1: Im-1
+    for m = 1: Im-1
         
         for n = 1: Jm-1
             LHS_y(n,n) = 1+ry;
@@ -175,10 +181,10 @@ for i = 1: it
                 LHS_y(1,2) = -ry/2.0;
                 LHS_y(Jm-1,Jm-2) = -ry/2.0;
             end
-            RHS_y(n,1) = dT_star(i,n);
+            RHS_y(n,1) = dT_star(m,n);
         end
         
-        dT(i,:) = Thomas_function(LHS_y, RHS_y);
+        dT(m,:) = Thomas_function(LHS_y, RHS_y);
         
     end
     
@@ -188,20 +194,36 @@ for i = 1: it
         end
     end
     
+    for n = 1: Jm+1
+        for m = 1: Im+1
+            diff_T(m,n) = T_ghost(m,n) - T_ghost_old(m,n);
+            T_ghost_old(m,n) = T_ghost(m,n);
+        end
+    end
+    
+    diffMax(i) = findMax2D(diff_T, Im, Jm);
+
+    itarray(i) = i;
+    if( diffMax(i) < 1e-6 )
+        break;
+    end    
     
 end
 
+hold on
+plot(itarray, log10(diffMax))
+
 %-------------------Output--------------------------
-file_o1 = strcat('mesh_final.dat');
+file_o1 = strcat('mesh_final_euler.dat');
 fid = fopen(file_o1,'w');
 
 fprintf(fid, 'TITLE = "2D mesh with final value"\n');
-fprintf(fid, 'VARIABLES = "X" "Y" "scalar"\n');
+fprintf(fid, 'VARIABLES = "X" "Y" "scalar" "diff"\n');
 fprintf(fid, 'ZONE I=%d, J=%d, F=POINT\n', Im+1, Jm+1);
 
 % Write data in point format
 for j = 1:Jm+1
     for i = 1:Im+1
-        fprintf(fid, '%g %g %g\n', xc_ghost(i,j), yc_ghost(i,j), T_ghost(i,j));
+        fprintf(fid, '%g %g %g %g\n', xc_ghost(i,j), yc_ghost(i,j), T_ghost(i,j), diff_T(i,j));
     end
 end
