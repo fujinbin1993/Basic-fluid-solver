@@ -1,0 +1,246 @@
+close 
+clc
+clear all
+
+%---------------parameters--------------------
+global Im Jm
+global xp yp
+global xc yc xc_ghost yc_ghost
+global T_ghost T_ghost_old diff_T
+global LHS_x RHS_x LHS_y RHS_y
+global dT_star dT
+
+Im = 101;
+Jm = 101;
+
+%---------------grids-------------------------
+xp = zeros(Im,Jm);
+yp = zeros(Im,Jm);
+
+xc = zeros(Im-1,Jm-1);
+yc = zeros(Im-1,Jm-1);
+
+xc_ghost = zeros(Im+1,Jm+1);
+yc_ghost = zeros(Im+1,Jm+1);
+
+lx = 3.50;
+ly = 3.50;
+
+dx = lx/(Im-1);
+dy = ly/(Jm-1);
+
+x1 = 0 : dx : lx;
+y1 = 0 : dy : ly;
+
+% Grid points
+for j = 1: Jm
+    for i = 1: Im
+        xp(i,j) = x1(i);
+        yp(i,j) = y1(j);
+    end
+end
+
+% Grid cells 
+for j = 1: Jm-1
+    for i = 1: Im-1
+        xc(i,j) = (xp(i,j)+xp(i+1,j))/2.0;
+        yc(i,j) = (yp(i,j)+yp(i,j+1))/2.0;
+    end
+end
+
+% Grid cells with one layer ghost cells
+for j = 2: Jm
+    for i = 2: Im
+        xc_ghost(i,j) = xc(i-1,j-1);
+        yc_ghost(i,j) = yc(i-1,j-1);
+    end
+end
+
+for j = 2: Jm
+    xc_ghost(1,j)    = xc_ghost(2,j)-dx;
+    yc_ghost(1,j)    = yc_ghost(2,j);
+    
+    xc_ghost(Im+1,j) = xc_ghost(Im,j)+dx;
+    yc_ghost(Im+1,j) = yc_ghost(Im,j);
+end
+
+for i = 2: Im
+    xc_ghost(i,1)    = xc_ghost(i,2);
+    yc_ghost(i,1)    = yc_ghost(i,2)-dy;
+    
+    xc_ghost(i,Im+1) = xc_ghost(i,Im);
+    yc_ghost(i,Im+1) = yc_ghost(i,Im)+dy;
+end
+
+xc_ghost(1,1) = xc_ghost(1,2);
+yc_ghost(1,1) = yc_ghost(2,1);
+
+xc_ghost(1,Jm+1) = xc_ghost(1,Jm);
+yc_ghost(1,Jm+1) = yc_ghost(2,Jm+1);
+
+xc_ghost(Im+1,1) = xc_ghost(Im+1,2);
+yc_ghost(Im+1,1) = yc_ghost(Im,1);
+
+xc_ghost(Im+1,Jm+1) = xc_ghost(Im+1,Jm);
+yc_ghost(Im+1,Jm+1) = yc_ghost(Im, Jm+1);
+
+%-------------Initialization-----------------------
+T_ghost = zeros(Im+1,Jm+1);
+T_ghost_old = zeros(Im+1,Jm+1);
+diff_T = zeros(Im+1,Jm+1);
+for j = 2: Jm
+    for i = 2: Im
+        T_ghost(i,j) = 0.0;
+    end
+end
+
+% ghost cells
+for i = 2: Im
+    T_ghost(i,1)    = 900;
+    T_ghost(i,Jm+1) = 600;
+end
+
+for j = 2: Jm
+    T_ghost(1,j)    = 400;
+    T_ghost(Im+1,j) = 800;
+end
+
+% corner cells
+T_ghost(1,1)       = (T_ghost(2,1)+T_ghost(1,2))/2.0;
+T_ghost(Im+1,1)    = (T_ghost(Im,1)+T_ghost(Im+1,2))/2.0;
+T_ghost(1,Jm+1)    = (T_ghost(1,Jm)+T_ghost(2,Jm+1))/2.0;
+T_ghost(Im+1,Jm+1) = (T_ghost(Im,Jm+1)+T_ghost(Im+1,Jm))/2.0;
+
+%------------------Initial output-------------------
+file_o1 = strcat('mesh_initial.dat');
+fid = fopen(file_o1,'w');
+
+fprintf(fid, 'TITLE = "2D mesh with initial value"\n');
+fprintf(fid, 'VARIABLES = "X" "Y" "scalar"\n');
+fprintf(fid, 'ZONE I=%d, J=%d, F=POINT\n', Im+1, Jm+1);
+
+% Write data in point format
+for j = 1:Jm+1
+    for i = 1:Im+1
+        fprintf(fid, '%g %g %g\n', xc_ghost(i,j), yc_ghost(i,j), T_ghost(i,j));
+        T_ghost_old(i,j) = T_ghost(i,j);
+    end
+end
+
+% Close the file
+fclose(fid);
+
+%--------------Heat conduction---------------------------
+it = 1000;
+alpha = 1.0;
+%dt = 0.5*2*(dx*dy)/(dx+dy);
+%rx = alpha*dt/dx^2;
+%ry = alpha*dt/dy^2;
+
+[NSeq, MinBeta] = findSequenceNum(Im, lx, dx, it);
+
+dt0(1) = 1;
+dt0(NSeq) = (dx/2.0)^2;
+for i = 2: NSeq-1
+    dt0(i) = (dx/2.0)^(2*(i-2)/(NSeq-3));
+end 
+
+for i = 1: it
+    il = mod(i,NSeq);
+    if(mod(i,NSeq)==0)
+        dt1(i) = dt0(NSeq);
+    else
+        dt1(i) = dt0(il);
+    end
+    rx(i) = alpha*dt1(i)/dx^2;
+    ry(i) = alpha*dt1(i)/dy^2;
+end
+
+
+
+LHS_x = zeros(Im-1,Im-1);
+RHS_x = zeros(Im-1,1);
+dT_star = zeros(Im-1,Jm-1);
+LHS_y = zeros(Jm-1,Jm-1);
+RHS_y = zeros(Jm-1,1);
+dT    = zeros(Im-1,Jm-1);
+RHS   = zeros(Im-1,Jm-1);
+
+for i = 1: it
+    i;
+    for j = 1: Jm-1
+
+        for m = 1: Im-1
+            LHS_x(m,m) = 1+2*rx(i);
+            if m<Im-1 && m>1
+                LHS_x(m,m+1) = -rx(i)/1.0;
+                LHS_x(m,m-1) = -rx(i)/1.0;
+                RHS_x(m,1)   = rx(i)*T_ghost(m+2,j+1)+rx(i)*T_ghost(m,j+1)-(2*rx(i)+2*ry(i))*T_ghost(m+1,j+1)+ry(i)*T_ghost(m+1,j+2)+ry(i)*T_ghost(m+1,j);
+            else
+                LHS_x(1,2) = -rx(i)/1.0;
+                LHS_x(Im-1,Im-2) = -rx(i)/1.0;                
+                RHS_x(1,1) = rx(i)*T_ghost(3,j+1)+rx(i)*T_ghost(1,j+1)-(2*rx(i)+2*ry(i))*T_ghost(2,j+1)+ry(i)*T_ghost(2,j+2)+ry(i)*T_ghost(2,j);
+                RHS_x(Im-1,1) = rx*(i)T_ghost(Im+1,j+1)+rx(i)*T_ghost(Im-1,j+1)-(2*rx(i)+2*ry(i))*T_ghost(Im,j+1)+ry(i)*T_ghost(Im,j+2)+ry(i)*T_ghost(Im,j); 
+            end
+            RHS(m,j) = RHS_x(m,1);
+        end                
+        dT_star(:,j) = Thomas_function(LHS_x, RHS_x);        
+    end
+    
+    for m = 1: Im-1
+        
+        for n = 1: Jm-1
+            LHS_y(n,n) = 1+2*ry;
+            if n>1 && n<Jm-1
+                LHS_y(n,n-1) = -ry/1.0;
+                LHS_y(n,n+1) = -ry/1.0;
+            else
+                LHS_y(1,2) = -ry/1.0;
+                LHS_y(Jm-1,Jm-2) = -ry/1.0;
+            end
+            RHS_y(n,1) = dT_star(i,n);
+        end
+        
+        dT(i,:) = Thomas_function(LHS_y, RHS_y);
+        
+    end
+    
+    for n = 2: Jm
+        for m = 2: Im
+            T_ghost(m,n) = T_ghost(m,n) + dT(m-1,n-1);
+        end
+    end
+    
+    for n = 1: Jm+1
+        for m = 1: Im+1
+            diff_T(m,n) = T_ghost(m,n) - T_ghost_old(m,n);
+            T_ghost_old(m,n) = T_ghost(m,n);
+        end
+    end
+    
+    diffMax = findMax2D(diff_T, Im, Jm);
+    
+    if( diffMax < 1e-6 )
+        break;
+    end
+end
+
+%-------------------Output--------------------------
+file_o1 = strcat('mesh_final_euler.dat');
+fid = fopen(file_o1,'w');
+
+fprintf(fid, 'TITLE = "2D mesh with final value"\n');
+fprintf(fid, 'VARIABLES = "X" "Y" "scalar" "diff"\n');
+fprintf(fid, 'ZONE I=%d, J=%d, F=POINT\n', Im+1, Jm+1);
+
+% Write data in point format
+for j = 1:Jm+1
+    for i = 1:Im+1
+        fprintf(fid, '%g %g %g %g\n', xc_ghost(i,j), yc_ghost(i,j), T_ghost(i,j), diff_T(i,j));
+    end
+end
+
+
+
+
+                
